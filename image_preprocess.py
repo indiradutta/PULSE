@@ -2,9 +2,7 @@ import torch
 import torchvision
 
 import numpy as np
-import sys
 import os
-import glob
 import dlib
 import gdown
 import json
