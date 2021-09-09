@@ -1,37 +1,55 @@
+import torch
+import torchvision
+
+import numpy as np
+import sys
+import os
+import glob
+import dlib
+import gdown
+import json
+
+import scipy
+import scipy.ndimage
+import PIL
+import PIL.Image
+
+from pathlib import Path
+
+__PREFIX__ = os.path.dirname(os.path.realpath(__file__))
+
 class Preprocessing():
 
-  def __init__(self, path, file=None):
+  def __init__(self, output_size, fl=None):
 
-    #the path of the image.
-    self.path = path
+    #output dimension of the image.
+    self.output_size = output_size
 
     #the path of the shape_predictor model.
-    self.file = file
+    self.fl = fl
 
     #the dlib face detector.
     self.detector = dlib.get_frontal_face_detector() 
 
     #if the user doesn't have the shape_predictor model then this will automatically download the model from drive.
-    if file is not None:
-      self.predictor = dlib.shape_predictor(self.file)
+    if fl is not None:
+      self.predictor = dlib.shape_predictor(self.fl)
+
     else:
-      with open('/content/shape_predictor.json', 'rb') as fp:
+      with open( __PREFIX__+"/config/shape_predictor.json", 'rb') as fp:
         json_file = json.load(fp)
         url = 'https://drive.google.com/uc?id={}'.format(json_file['shape_predictor'])
         gdown.download(url, 'shape_predictor.dat', quiet=False)
         file_new = 'shape_predictor.dat'
         self.predictor = dlib.shape_predictor(file_new)
 
-    #output dimension of the image.
-    self.output_size = 512
-
     #transformation dimension of the image.
     self.transform_size = 1024
   
-  def landmark_detection(self):
+  def landmark_detection(self, path):
 
     #The faces are detected using the face detector of dlib
-    img = dlib.load_rgb_image(self.path)
+    img = dlib.load_rgb_image(path)
     faces = self.detector(img, 1)
 
     #the landmark co-ordinates of the faces are extracted 
@@ -42,10 +60,10 @@ class Preprocessing():
 
     return landmarks
   
-  def align_faces(self):
+  def align_faces(self, path):
 
     #the landmarks are extracted
-    landmarks = self.landmark_detection()
+    landmarks = self.landmark_detection(path)
     imgs = []
 
     for landmark in landmarks:
@@ -90,7 +108,7 @@ class Preprocessing():
         #scaled size of the quadrilateral
         frame_size = np.hypot(*x) * 2
 
-        img = PIL.Image.open(self.path)
+        img = PIL.Image.open(path)
 
         img = img.transform((self.transform_size, self.transform_size), PIL.Image.QUAD, (frame + 0.5).flatten(),
                             PIL.Image.BILINEAR)
